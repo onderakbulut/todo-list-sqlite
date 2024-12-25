@@ -18,7 +18,7 @@ A simple task management API built with Node.js and Express.js. Perform CRUD (Cr
 ## 💻 Installation
 
 ```bash
-git clone [repo-url]
+git clone https://github.com/onderakbulut/todo-list-sqlite.git
 cd todo-list-sqlite
 npm install
 npm start
