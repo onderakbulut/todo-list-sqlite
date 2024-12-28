@@ -130,12 +130,57 @@ router.get('/users', (req, res) => {
     });
 });
 
-// create a user
-router.post('/user/create', (req, res) => {
+// user register
+router.post('/user/register', (req, res) => {
     const { username, email, password } = req.body;
-    db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', [username, email, password], function(err) {
-        res.json({ status: 'success', message: 'User created successfully' });
-    });
+    
+    db.run('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
+        [username, email, password], 
+        function(err) {
+            if (err) {
+                // SQLITE_CONSTRAINT hatası ve email için unique kontrolü
+                if (err.errno === 19 && err.message.includes('users.email')) {
+                    return res.status(409).json({ 
+                        status: 'error', 
+                        message: 'Bu email adresi zaten kullanımda',
+                        error: {
+                            code: 'EMAIL_EXISTS',
+                            field: 'email'
+                        }
+                    });
+                }
+
+                // Diğer veritabanı hataları için
+                console.error('Veritabanı hatası:', err);
+                return res.status(500).json({ 
+                    status: 'error', 
+                    message: 'Kullanıcı kaydı yapılırken bir hata oluştu',
+                    error: {
+                        code: err.code,
+                        message: err.message,
+                        type: err.errno ? `SQLite Hata Kodu: ${err.errno}` : 'Bilinmeyen hata'
+                    }
+                });
+            }
+            
+            if (this.lastID) {
+                res.json({ 
+                    status: 'success', 
+                    message: 'Kullanıcı başarıyla oluşturuldu',
+                    userId: this.lastID 
+                });
+            } else {
+                res.status(500).json({ 
+                    status: 'error', 
+                    message: 'Kullanıcı kaydı doğrulanamadı',
+                    error: {
+                        type: 'ValidationError',
+                        message: 'Kayıt oluşturuldu fakat ID alınamadı'
+                    }
+                });
+            }
+        }
+    );
 });
 
 // get a user
@@ -178,6 +223,28 @@ router.delete('/user/delete/:id', (req, res) => {
     });
 });
 
-
+// login endpoint
+router.post('/user/login', (req, res) => {
+    const { email, password } = req.body;
+    db.get('SELECT * FROM users WHERE email = ? AND password = ?', [email, password], (err, row) => {
+        if (err) {
+            res.status(500).json({ 
+                status: 'error',
+                message: err.message 
+            });
+        } else if (!row) {
+            res.status(401).json({
+                status: 'error',
+                message: 'Email veya şifre hatalı'
+            });
+        } else {
+            res.json({
+                status: 'success',
+                userId: row.id,
+                token: 'dummy-token' // Gerçek uygulamada JWT token kullanılmalı
+            });
+        }
+    });
+});
 
 module.exports = router;
