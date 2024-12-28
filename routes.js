@@ -6,24 +6,6 @@ router.get('/', (req, res) => {
     res.send('Api is running');
 });
 
-
-// get all tasks
-router.get('/tasks', (req, res) => {
-    db.all('SELECT * FROM tasks', [], (err, rows) => {
-        if (err) {
-            res.status(500).json({ 
-                status: 'error',
-                message: err.message 
-            });
-        } else {
-            res.json({
-                status: 'success',
-                data: rows
-            });
-        }
-    });
-});
-
 // create a task
 router.post('/create', (req, res) => {
     const { title, completed, user_id } = req.body;
@@ -42,26 +24,11 @@ router.post('/create', (req, res) => {
     });
 });
 
-// get a task
-router.get('/get/:id', (req, res) => {
-    const { id } = req.params;
-    db.get('SELECT * FROM tasks WHERE id = ?', [id], (err, row) => {
-        if (err) {
-            res.status(500).json({ 
-                status: 'error',
-                message: err.message 
-            });
-        } else if (!row) {
-            res.status(404).json({
-                status: 'error',
-                message: 'Task not found'
-            });
-        } else {
-            res.json({
-                status: 'success',
-                data: row
-            });
-        }
+// get tasks by user id
+router.get('/tasks/:userId', (req, res) => {
+    const { userId } = req.params;
+    db.all('SELECT * FROM tasks WHERE user_id = ?', [userId], (err, rows) => {
+        res.json({ status: 'success', data: rows });
     });
 });
 
@@ -138,11 +105,10 @@ router.post('/user/register', (req, res) => {
         [username, email, password], 
         function(err) {
             if (err) {
-                // SQLITE_CONSTRAINT hatası ve email için unique kontrolü
                 if (err.errno === 19 && err.message.includes('users.email')) {
                     return res.status(409).json({ 
                         status: 'error', 
-                        message: 'Bu email adresi zaten kullanımda',
+                        message: 'This email is already in use',
                         error: {
                             code: 'EMAIL_EXISTS',
                             field: 'email'
@@ -150,15 +116,14 @@ router.post('/user/register', (req, res) => {
                     });
                 }
 
-                // Diğer veritabanı hataları için
-                console.error('Veritabanı hatası:', err);
+                console.error('Database error:', err);
                 return res.status(500).json({ 
                     status: 'error', 
-                    message: 'Kullanıcı kaydı yapılırken bir hata oluştu',
+                    message: 'An error occurred while registering user',
                     error: {
                         code: err.code,
                         message: err.message,
-                        type: err.errno ? `SQLite Hata Kodu: ${err.errno}` : 'Bilinmeyen hata'
+                        type: err.errno ? `SQLite Error Code: ${err.errno}` : 'Unknown error'
                     }
                 });
             }
@@ -166,16 +131,16 @@ router.post('/user/register', (req, res) => {
             if (this.lastID) {
                 res.json({ 
                     status: 'success', 
-                    message: 'Kullanıcı başarıyla oluşturuldu',
+                    message: 'User created successfully',
                     userId: this.lastID 
                 });
             } else {
                 res.status(500).json({ 
                     status: 'error', 
-                    message: 'Kullanıcı kaydı doğrulanamadı',
+                    message: 'User registration could not be verified',
                     error: {
                         type: 'ValidationError',
-                        message: 'Kayıt oluşturuldu fakat ID alınamadı'
+                        message: 'Record created but ID could not be retrieved'
                     }
                 });
             }
@@ -235,13 +200,13 @@ router.post('/user/login', (req, res) => {
         } else if (!row) {
             res.status(401).json({
                 status: 'error',
-                message: 'Email veya şifre hatalı'
+                message: 'Invalid email or password'
             });
         } else {
             res.json({
                 status: 'success',
                 userId: row.id,
-                token: 'dummy-token' // Gerçek uygulamada JWT token kullanılmalı
+                token: 'dummy-token' 
             });
         }
     });

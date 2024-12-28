@@ -4,7 +4,6 @@ const routes = require('./routes');
 
 const app = express();
 
-// CORS ayarları
 app.use(cors({
     origin: 'http://localhost:3001', // Frontend URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
